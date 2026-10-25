@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture: data, agent, officer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="site"><b>Agentic Loan Approval Demo</b>
+<a href="index.html">Demo</a><a href="story.html">Approach</a><a href="architecture.html" aria-current="page">Architecture</a><a href="faq.html">FAQ</a><a href="about.html">About</a></header>
+<main>
+<h1>How the pieces fit together</h1>
+<p class="lede">Data flows left to right, from sources to the officer’s screen. Governance runs underneath all of it. Every box says whether it works in this demo or is only the target design.</p>
+
+<div class="legend" role="list" aria-label="Legend">
+<span role="listitem"><i class="st-live"></i><b>Working in demo</b> (solid border)</span>
+<span role="listitem"><i class="st-sim"></i><b>Simulated in demo</b> (dashed border)</span>
+<span role="listitem"><i class="st-target"></i><b>Target design, not built</b> (dotted border)</span>
+</div>
+
+<div class="arch">
+<div class="col"><h3>1. Data sources</h3>
+<div class="box st-sim"><b>Documents and policy</b>Sample applicant documents and a lending policy we wrote<br><span class="badge b-sim">Simulated</span></div>
+<div class="box st-sim"><b>Bank records</b>Synthetic customer and loan tables<br><span class="badge b-sim">Simulated</span></div>
+<div class="box st-sim"><b>Outside services</b>Credit bureau, PAN and Aadhaar checks with made-up responses<br><span class="badge b-sim">Simulated</span></div></div>
+
+<div class="col"><h3>2. Ingestion</h3>
+<div class="box st-sim"><b>Prepare data</b>A script creates the sample data files used by the app<br><span class="badge b-sim">Simulated</span></div>
+<div class="box st-target"><b>Scheduled pipeline</b>Regular loads and cleaning into the lakehouse<br><span class="badge b-target">Target only</span></div></div>
+
+<div class="col"><h3>3. Lakehouse</h3>
+<div class="box st-sim"><b>Data files in the app</b>Stand-in for the lakehouse during the demo<br><span class="badge b-sim">Simulated</span></div>
+<div class="box st-target"><b>Google BigQuery</b>Target platform for tables, documents and API results<br><span class="badge b-target">Target only</span></div></div>
+
+<div class="col"><h3>4. Agent and tools</h3>
+<div class="box st-sim"><b>Loan Assessment Agent</b>Scripted logic that follows the four steps<br><span class="badge b-sim">Simulated</span></div>
+<div class="box st-live"><b>Tools</b>Document check, policy lookup, EMI and affordability calculation, risk flags<br><span class="badge b-live">Working</span></div>
+<div class="box st-target"><b>AI model</b>Reads scanned documents and writes the explanations<br><span class="badge b-target">Target only</span></div></div>
+
+<div class="col"><h3>5. Screens</h3>
+<div class="box st-live"><b>Applicant journey</b>Application, documents, status<br><span class="badge b-live">Working</span></div>
+<div class="box st-live"><b>Officer dashboard</b>Data used, agent steps, flags, recommendation with reasons<br><span class="badge b-live">Working</span></div></div>
+</div>
+
+<div class="gov card"><h3>Governance, across every layer</h3>
+<div class="row">
+<div class="box st-live"><b>Officer approval gate</b>No sanction or payout without a human decision<br><span class="badge b-live">Working</span></div>
+<div class="box st-live"><b>Activity log</b>Each step records what data it used and what it concluded<br><span class="badge b-live">Working</span></div>
+<div class="box st-live"><b>RBI-linked steps</b>Consent, Key Fact Statement, cooling-off, payout to the borrower’s own account<br><span class="badge b-live">Working</span></div>
+<div class="box st-target"><b>Production controls</b>Access control, data stored in India, model monitoring, learning from officer feedback<br><span class="badge b-target">Target only</span></div>
+</div></div>
+
+<section>
+<h2>Why each design choice</h2>
+<div class="scroll"><table>
+<tr><th>Choice</th><th>Reason</th></tr>
+<tr><td>One agent with four tools</td><td>Each step is easy to explain and check. Several shallow agents would be harder to defend.</td></tr>
+<tr><td>Human approves</td><td>RBI keeps the bank accountable for lending decisions, so the agent only recommends.</td></tr>
+<tr><td>Calculations are real, AI reasoning is simulated</td><td>The numbers can be checked by hand. We do not claim a live AI model is running.</td></tr>
+<tr><td>BigQuery as target</td><td>It can hold tables, documents and API results in one platform. It is not connected in this demo.</td></tr>
+</table></div>
+<p style="margin-top:1rem">The layout follows the common agent-plus-data-platform pattern: enterprise data flows through ingestion into a data platform, tools expose that data to an agent, and an application serves the user, with a human-in-the-loop step. Parts of that pattern, such as agent-to-agent communication and learning from officer feedback, are future work and not built here.</p>
+</section>
+</main>
+<footer>Assignment demo with synthetic data. Not a real bank or financial advice.</footer>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loan approval demo: officer dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+.layout{display:grid;grid-template-columns:270px 1fr;gap:1.2rem;align-items:start}
+.list{display:grid;gap:.4rem}
+.item{text-align:left;font:inherit;background:#fff;border:1px solid var(--line);border-radius:6px;padding:.5rem .7rem;cursor:pointer;color:var(--ink)}
+.item[aria-pressed=true]{border:2px solid var(--ink);padding:calc(.5rem - 1px) calc(.7rem - 1px)}
+.item small{display:block;color:var(--muted)}
+.chip{display:inline-block;font-size:.8rem;font-weight:600;border:1px solid currentColor;border-radius:3px;padding:0 .4rem}
+.c-approve{color:var(--live)}.c-refer{color:var(--sim)}.c-decline{color:#A12A2A}.c-hold{color:#4B3F9E}.c-none{color:var(--target)}
+.track{display:flex;flex-wrap:wrap;gap:.3rem;margin:.6rem 0 1rem;padding:0;list-style:none}
+.track li{font-size:.85rem;padding:.2rem .6rem;border:1px solid var(--line);border-radius:99px;background:#fff;color:var(--muted)}
+.track li.done{background:var(--ink);color:#fff;border-color:var(--ink)}
+.track li.now{border:2px solid var(--ink);color:var(--ink);font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.15rem .8rem;font-size:.93rem;margin:0}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.btn{font:inherit;font-weight:600;background:var(--ink);color:#fff;border:0;border-radius:6px;padding:.55rem 1rem;cursor:pointer}
+.btn.alt{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.ok{color:var(--live)}.bad{color:#A12A2A}.warn{color:var(--sim)}
+textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:6px;padding:.5rem;margin:.4rem 0}
+.log{font-size:.88rem;color:var(--muted);margin:0;padding-left:1.1rem}
+.sec{margin:1.2rem 0}
+@media(max-width:800px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site"><b>Agentic Loan Approval Demo</b>
+<a href="index.html" aria-current="page">Demo</a><a href="story.html">Approach</a><a href="architecture.html">Architecture</a><a href="faq.html">FAQ</a><a href="about.html">About</a></header>
+<main>
+<h1>Credit officer dashboard</h1>
+<p class="lede">Personal loan applications for a fictional mid-sized bank. Pick an applicant, run the agent, review its reasons, then decide. All data is synthetic and every outside service is simulated.</p>
+<div class="layout"><div class="list" id="list" aria-label="Applicants"></div><div id="detail" aria-live="polite"></div></div>
+</main>
+<footer>Assignment demo with synthetic data. Policy values are assumptions, not any real bank’s. Not financial advice.</footer>
+<script src="data.js"></script>
+<script>
+// ASSUMED policy for a fictional bank (not real values)
+const P={rate:.14,ageMin:21,ageMax:60,minAmt:50000,cap:1000000,foir:.5,approve:700,refer:650,minMonths:12,slips:3,stmt:6,cool:3};
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const emi=(p,n)=>{const r=P.rate/12;return p*r*(1+r)**n/((1+r)**n-1)};
+const pv=(e,n)=>{const r=P.rate/12;return e*((1+r)**n-1)/(r*(1+r)**n)};
+const V={approve:['Recommend approve','c-approve'],refer:['Refer to officer','c-refer'],decline:['Recommend decline','c-decline'],hold:['Hold: fix documents or KYC','c-hold']};
+const S={sel:1,ran:{},dec:{},post:{},log:{}};
+const log=(id,t)=>{(S.log[id]=S.log[id]||[]).push(new Date().toLocaleTimeString()+'  '+t)};
+
+function agent(a){
+  const miss=[];
+  if(!a.docs.pan)miss.push('PAN');if(!a.docs.aadhaar)miss.push('Aadhaar');
+  if(a.docs.slips<P.slips)miss.push((P.slips-a.docs.slips)+' salary slip(s)');
+  if(a.docs.stmtMonths<P.stmt)miss.push('bank statement months');
+  const kycOk=a.kyc.panName===a.kyc.aadhaarName&&a.kyc.panValid;
+  const ne=emi(a.requested,a.tenure),foir=(a.existingEmi+ne)/a.income;
+  const maxEmi=Math.max(P.foir*a.income-a.existingEmi,0),afford=pv(maxEmi,a.tenure),maxEl=Math.min(afford,P.cap);
+  const sc=a.bureau.score,F=[],R=[];
+  const flag=(lvl,t)=>F.push({lvl,t});
+  if(miss.length)flag('hold','Missing documents: '+miss.join(', '));else R.push('All required documents present.');
+  if(!kycOk)flag('hold','KYC mismatch: PAN name “'+a.kyc.panName+'” differs from Aadhaar name “'+a.kyc.aadhaarName+'”.');else R.push('PAN and Aadhaar names match.');
+  if(a.age<P.ageMin||a.age>P.ageMax)flag('decline','Age '+a.age+' is outside the policy range '+P.ageMin+' to '+P.ageMax+'.');else R.push('Age '+a.age+' is within policy.');
+  if(sc<P.refer)flag('decline','Credit score '+sc+' is below '+P.refer+'.');
+  else if(sc<P.approve)flag('refer','Credit score '+sc+' is in the review band '+P.refer+' to '+(P.approve-1)+'.');
+  else R.push('Credit score '+sc+' meets the '+P.approve+' threshold.');
+  if(a.bureau.missed12m>0)flag('refer',a.bureau.missed12m+' missed payment(s) in the last 12 months.');
+  if(foir>P.foir)flag('refer','EMIs would take '+(foir*100).toFixed(1)+'% of income, above the '+P.foir*100+'% limit. Income supports about '+inr(maxEl)+'.');
+  else R.push('EMIs would take '+(foir*100).toFixed(1)+'% of income, within the '+P.foir*100+'% limit.');
+  if(a.requested>P.cap)flag('refer','Requested '+inr(a.requested)+' is above the policy cap of '+inr(P.cap)+'.');
+  if(a.stmt.avgMonthlyCredits<.75*a.income)flag('refer','Declared income '+inr(a.income)+' but bank statement shows about '+inr(a.stmt.avgMonthlyCredits)+' a month.');
+  if(a.monthsInJob<P.minMonths)flag('refer','Only '+a.monthsInJob+' months in current job (policy asks '+P.minMonths+').');
+  const order=['hold','decline','refer'];
+  const verdict=order.find(l=>F.some(f=>f.lvl===l))||'approve';
+  return{miss,kycOk,ne,foir,maxEl,F,R,verdict,sc,steps:[
+   {t:'1. Check documents and KYC',u:'Uploaded documents; PAN and Aadhaar checks (simulated)',r:miss.length||!kycOk?'Problem found':'Complete and matching',ok:!(miss.length||!kycOk)},
+   {t:'2. Look up policy',u:'Bank lending policy (assumed values)',r:'Age '+P.ageMin+'–'+P.ageMax+'; score '+P.approve+'+ (review '+P.refer+'–'+(P.approve-1)+'); EMIs ≤ '+P.foir*100+'% of income; amount '+inr(P.minAmt)+'–'+inr(P.cap)+'; ≥ '+P.minMonths+' months in job',ok:true},
+   {t:'3. Check credit and affordability',u:'Credit bureau response (simulated); income; existing EMIs',r:'Score '+sc+'; new EMI '+inr(ne)+'; EMI share '+(foir*100).toFixed(1)+'%; max eligible '+inr(maxEl),ok:foir<=P.foir&&sc>=P.refer},
+   {t:'4. Flag risks and recommend',u:'Results of steps 1 to 3',r:F.length+' flag(s); '+V[verdict][0],ok:!F.length}]};
+}
+const cur=id=>APPLICANTS.find(x=>x.id===id);
+function stage(id){const d=S.dec[id],p=S.post[id]||0;if(p>=3)return 6;if(d&&d.type==='approve')return 5;if(d)return 4;return S.ran[id]?3:1}
+function renderList(){
+  list.innerHTML=APPLICANTS.map(a=>{const ru=S.ran[a.id]?V[agent(a).verdict]:null,d=S.dec[a.id];
+    const tag=d?'<span class="chip c-none">Officer: '+d.label+'</span>':ru?'<span class="chip '+ru[1]+'">'+ru[0]+'</span>':'<span class="chip c-none">Not assessed</span>';
+    return '<button class="item" aria-pressed="'+(a.id===S.sel)+'" onclick="S.sel='+a.id+';render()"><b>'+a.id+'. '+a.name+'</b><small>'+inr(a.requested)+' · '+a.job+'</small>'+tag+'</button>'}).join('');
+}
+function render(){renderList();const a=cur(S.sel),id=a.id,run=S.ran[id],g=run?agent(a):null,d=S.dec[id],p=S.post[id]||0;
+  const st=['Application','Documents and KYC','Credit check','Agent recommendation','Officer decision','Sanction','Disbursement'],cs=stage(id);
+  let h='<h2>'+a.name+' <small style="font-size:.6em;color:var(--muted)">application #'+id+'</small></h2><p>'+a.age+' years · '+a.job+', '+a.city+' · asks '+inr(a.requested)+' over '+a.tenure+' months · consent recorded (synthetic)</p>';
+  h+='<ol class="track" aria-label="Loan journey">'+st.map((s,i)=>'<li class="'+(i<cs?'done':i===cs?'now':'')+'">'+s+'</li>').join('')+'</ol>';
+  h+='<div class="sec"><h3>Source data <span class="badge b-sim">Simulated</span></h3><div class="grid g3">'
+   +'<div class="card"><h3>Documents</h3><dl class="kv"><dt>PAN</dt><dd>'+(a.docs.pan?'Received':'Missing')+'</dd><dt>Aadhaar</dt><dd>'+(a.docs.aadhaar?'Received':'Missing')+'</dd><dt>Salary slips</dt><dd>'+a.docs.slips+' of '+P.slips+'</dd><dt>Bank statement</dt><dd>'+a.docs.stmtMonths+' of '+P.stmt+' months</dd></dl></div>'
+   +'<div class="card"><h3>Bank records</h3><dl class="kv"><dt>Declared income</dt><dd>'+inr(a.income)+'/month</dd><dt>Existing EMIs</dt><dd>'+inr(a.existingEmi)+'/month</dd><dt>Active loans</dt><dd>'+a.activeLoans+'</dd><dt>In current job</dt><dd>'+a.monthsInJob+' months</dd></dl></div>'
+   +'<div class="card"><h3>Outside services</h3><dl class="kv"><dt>Credit score</dt><dd>'+a.bureau.score+'</dd><dt>Missed (12 mo)</dt><dd>'+a.bureau.missed12m+'</dd><dt>PAN name</dt><dd>'+a.kyc.panName+'</dd><dt>Aadhaar name</dt><dd>'+a.kyc.aadhaarName+'</dd><dt>Statement credits</dt><dd>'+inr(a.stmt.avgMonthlyCredits)+'/month</dd></dl></div></div></div>';
+  if(!run){h+='<button class="btn" onclick="S.ran['+id+']=1;log('+id+',\'Agent assessment run\');render()">Run agent assessment</button>';detail.innerHTML=h;return}
+  h+='<div class="sec"><h3>Agent steps <span class="badge b-sim">Scripted logic</span></h3><ol class="steps" style="list-style:none">'+g.steps.map(s=>'<li><span class="n '+(s.ok?'ok':'warn')+'">'+(s.ok?'✓':'!')+'</span><div><b>'+s.t+'</b><small>Uses: '+s.u+'</small><small>Result: '+s.r+'</small></div></li>').join('')+'</ol></div>';
+  h+='<div class="sec"><h3>Risk flags</h3>'+(g.F.length?'<ul>'+g.F.map(f=>'<li><span class="chip '+V[f.lvl][1]+'">'+f.lvl+'</span> '+f.t+'</li>').join('')+'</ul>':'<p>No flags raised.</p>')+'</div>';
+  h+='<div class="handoff"><h3>Recommendation: <span class="'+V[g.verdict][1]+'">'+V[g.verdict][0]+'</span></h3><p>Reasons the agent used:</p><ul>'+g.R.concat(g.F.map(f=>f.t)).map(r=>'<li>'+r+'</li>').join('')+'</ul><p><i>This is a recommendation only. Only the credit officer can approve.</i></p></div>';
+  if(!d){h+='<div class="sec card"><h3>Officer decision</h3><textarea id="note" rows="2" placeholder="Note (required if you go against the recommendation)"></textarea><button class="btn" onclick="decide(\'approve\')">Approve</button> <button class="btn alt" onclick="decide(\'reject\')">Reject</button> <button class="btn alt" onclick="decide(\'info\')">Ask for more information</button><p id="msg" class="bad" style="margin:.4rem 0 0"></p></div>'}
+  else{h+='<div class="sec card"><h3>Officer decision: '+d.label+'</h3><p>'+(d.note||'No note.')+'</p></div>';
+   if(d.type==='approve'){const amt=Math.min(a.requested,P.cap),e=emi(amt,a.tenure);
+    h+='<div class="sec card"><h3>Sanction and disbursement</h3>'
+     +'<p>1. Sanction and Key Fact Statement '+(p>=1?'<b class="ok">issued</b>':'')+'</p>'+(p>=1?'<div class="note"><p><b>Illustrative key terms</b> (not the RBI KFS format): amount '+inr(amt)+'; interest '+P.rate*100+'% a year (assumed); tenure '+a.tenure+' months; EMI '+inr(e)+'; total repayment '+inr(e*a.tenure)+'. Sent as signed documents to the borrower’s registered email and SMS (synthetic).</p></div>':'')
+     +'<p>2. Borrower acceptance '+(p>=2?'<b class="ok">recorded</b>':'')+'</p>'
+     +'<p>3. Disbursement '+(p>=3?'<b class="ok">paid to the borrower’s own account '+a.account+' (name matches applicant)</b>':'')+'</p>'
+     +(p>=3?'<p>Cooling-off window open for '+P.cool+' days (assumed; RBI minimum is 1 day). The borrower may exit by repaying principal and proportionate interest without penalty.</p>':'')
+     +(p<3?'<button class="btn" onclick="S.post['+id+']='+(p+1)+';log('+id+',\''+['Sanction and KFS issued','Borrower acceptance recorded','Disbursed to borrower account'][p]+'\');render()">'+['Issue sanction and KFS','Record borrower acceptance','Disburse to borrower account'][p]+'</button>':'')+'</div>'}}
+  h+='<div class="sec"><h3>Activity log</h3><ul class="log">'+(S.log[id]||[]).map(l=>'<li>'+l+'</li>').join('')+'</ul></div>';
+  detail.innerHTML=h;
+}
+function decide(type){const a=cur(S.sel),g=agent(a),note=document.getElementById('note').value.trim();
+  const against=(type==='approve'&&g.verdict!=='approve')||(type==='reject'&&g.verdict==='approve');
+  if(against&&note.length<5){document.getElementById('msg').textContent='This goes against the recommendation. Add a note (at least 5 characters) to explain why.';return}
+  const label={approve:'Approved',reject:'Rejected',info:'More information requested'}[type];
+  S.dec[a.id]={type,label,note};log(a.id,'Officer decision: '+label+(against?' (override of recommendation)':''));render();
+}
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ: Agentic loan approval demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>details{background:#fff;border:1px solid var(--line);border-radius:6px;padding:.7rem 1rem;margin-bottom:.6rem}summary{font-weight:600;cursor:pointer}details p{margin:.6rem 0 0}</style>
+</head>
+<body>
+<header class="site"><b>Agentic Loan Approval Demo</b>
+<a href="index.html">Demo</a><a href="story.html">Approach</a><a href="architecture.html">Architecture</a><a href="faq.html" aria-current="page">FAQ</a><a href="about.html">About</a></header>
+<main>
+<h1>Questions people ask</h1>
+<p class="lede">Straight answers about what this demo is, what it is not, and what a real version would need.</p>
+
+<details><summary>Is this a real bank, and is the data real?</summary><p>No. The bank is fictional and every applicant, document and credit report is made up. No real customer data is used and nothing connects to a live banking, bureau or government system.</p></details>
+<details><summary>Does the agent use a real AI model?</summary><p>No. The agent’s four steps are scripted logic that follows written rules. The calculations are real and can be checked by hand, but the reasoning is not produced by a live AI model. In a real deployment, an AI model would read scanned documents and write the explanations, inside the same rules and approval controls.</p></details>
+<details><summary>Can the agent approve a loan?</summary><p>No. It only recommends, with reasons. The credit officer decides, and an officer who goes against the recommendation must write a note. Sanction and disbursement unlock only after an approval.</p></details>
+<details><summary>Is BigQuery connected?</summary><p>No. BigQuery is the target data platform and is shown on the <a href="architecture.html">architecture page</a>. In this demo, a script creates a data file that stands in for it.</p></details>
+<details><summary>Are the credit bureau and KYC checks real?</summary><p>No. They are simulated responses stored with each applicant.</p></details>
+<details><summary>Where do the policy values come from?</summary><p>They are our assumptions for a fictional bank: age 21 to 60, score 700 or more to pass and 650 to 699 for review, EMIs up to 50% of income, loans from ₹50,000 to ₹10 lakh, and at least 12 months in the current job. Each real bank sets its own policy. The 14% interest rate and 3-day cooling-off window are also assumptions.</p></details>
+<details><summary>Which RBI rules does the demo follow?</summary><p>We read the <a href="https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12848">RBI Digital Lending Directions, 2025</a> and built around four points: record age, occupation and income (para 7), give key loan terms and signed documents (para 8), pay out only to the borrower’s own account (para 9), and allow a cooling-off exit of at least one day (para 10). The key terms shown in the demo are illustrative and are not the official Key Fact Statement format, which we have not read in full.</p></details>
+<details><summary>What would a real version need?</summary><p>Live bureau and KYC integrations, BigQuery or a similar platform, an AI model for document reading, access controls, data stored in India, fairness and accuracy testing, and review by the bank’s credit risk and compliance teams.</p></details>
+<details><summary>Was AI used to build this?</summary><p>Yes. Claude helped with research, design and code, and the work was reviewed and tested by the author. The AI usage log in the repository records what was accepted and what was corrected.</p></details>
+</main>
+<footer>Assignment demo with synthetic data. Not a real bank or financial advice.</footer>
+</body>
+</html>
